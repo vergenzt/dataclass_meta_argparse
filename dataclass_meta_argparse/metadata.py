@@ -4,7 +4,7 @@ from .type_utils import partial_instance_method
 
 
 argparse_argument = partial_instance_method(ArgumentParser.add_argument)
-argparse_argument.__doc__ = '''
+argparse_argument.__doc__ = """
     Specification for an `ArgumentParser` argument, detached from any specific `ArgumentParser` instance.
 
     Instantiate one by calling `argparse_argument(...)` with the same arguments you would
@@ -23,7 +23,7 @@ argparse_argument.__doc__ = '''
     options:
       -h, --help  show this help message and exit
       -f, --foo   bar
-'''
+"""
 
 
 ARGS = object()

@@ -1,4 +1,4 @@
-r'''
+r"""
 Tools to help build ArgumentParsers out of dataclass metadata.
 
 To use:
@@ -51,7 +51,7 @@ positional arguments:
 options:
   -h, --help           show this help message and exit
   --myarg INT, -m INT  my integer argument
-'''
+"""
 
 # pyright: reportUnusedImport=false
 # ruff: noqa: F401
