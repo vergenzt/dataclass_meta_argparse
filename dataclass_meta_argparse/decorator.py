@@ -37,8 +37,8 @@ def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserP
 
         def wrapper_generator(cls: DataclassType) -> DataclassType:
             @dataclass
-            class wrapper(cls):
-                argument_parser: ClassVar[ArgumentParser] = ArgumentParser(*args, **kwargs)
+            class wrapper(cls):  # type: ignore
+                argument_parser: ClassVar[ArgumentParser] = ArgumentParserCallable(*args, **kwargs)
 
                 # populate argument_parser at class definition time
                 for field in fields(cls):
@@ -103,7 +103,7 @@ def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserP
                     return args
 
             update_wrapper(wrapper, cls, updated=[])
-            return wrapper
+            return wrapper  # type: ignore
 
         return wrapper_generator
 
