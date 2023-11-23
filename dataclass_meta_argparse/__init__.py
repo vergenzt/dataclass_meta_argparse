@@ -53,5 +53,8 @@ options:
   --myarg INT, -m INT  my integer argument
 '''
 
+# pyright: reportUnusedImport=false
+# ruff: noqa: F401
+
 from .decorator import argument_parser_from_dataclass_meta
 from .metadata import ARGS, argparse_argument

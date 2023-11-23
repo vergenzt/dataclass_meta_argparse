@@ -7,7 +7,7 @@ from logging import debug
 from typing import Any, Callable, ClassVar, Dict, List, Mapping, Optional, ParamSpec, Protocol, Type, TypeVar
 
 from .metadata import ARGS
-from .utils import default_envize_string
+from .str_utils import default_envize_string
 
 
 # based on typeshed: https://github.com/python/typeshed/pull/9362
