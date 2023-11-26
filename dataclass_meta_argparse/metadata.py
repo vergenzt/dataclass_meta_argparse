@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from .type_utils import partial_instance_method
+from .utils_callable import partial_instance_method
 
 
 argparse_argument = partial_instance_method(ArgumentParser.add_argument)
@@ -16,7 +16,7 @@ argparse_argument.__doc__ = """
 
     >>> my_arg_fn = argparse_argument('-f', '--foo', action='store_true', help='bar')
     >>> parser = ArgumentParser(prog='baz')
-    >>> action = my_arg_fn(parser)
+    >>> action = my_arg_fn(parser, dest='foo')
     >>> parser.print_help()
     usage: baz [-h] [-f]
     <BLANKLINE>
@@ -26,5 +26,22 @@ argparse_argument.__doc__ = """
 """
 
 
-ARGS = object()
-ARGS.__doc__ = 'Sentinal object for use as dataclass field `metadata` key.'
+class _ArgsSentinel:
+    pass
+
+
+ARGS = _ArgsSentinel()
+ARGS.__doc__ = """
+  Sentinel object for use as a dataclass field `metadata` key.
+
+  Use it alongside `argparse_argument`s.
+
+  E.g.:
+  >>> @dataclass
+  ... class MyDataClass:
+  ...   my_field: int = field(metadata={
+  ...     ARGS: [
+  ...       ...
+  ...     ]
+  ...   })
+"""
