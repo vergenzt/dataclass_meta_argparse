@@ -4,19 +4,19 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import Field, dataclass, fields
 from functools import update_wrapper
 from logging import debug
-from typing import Any, Callable, ClassVar, Dict, List, Mapping, Optional, ParamSpec, Protocol, Type, TypeVar
+from typing import Any, Callable, ClassVar, Dict, List, Mapping, Optional, ParamSpec, Protocol, TypeVar, cast
 
 from .metadata import ARGS
 from .utils_str import default_envize_string
 
 
 # based on typeshed: https://github.com/python/typeshed/pull/9362
-class _DataclassProtocol(Protocol):
+class DataclassProtocol(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 
 ArgumentParserParams = ParamSpec('ArgumentParserParams')
-DataclassType = TypeVar('DataclassType', bound=Type[_DataclassProtocol])
+T = TypeVar('T', bound=type)
 
 
 # AFAIK Python does not have a way to directly assign a ParamSpec to the parameter spec
@@ -24,7 +24,7 @@ DataclassType = TypeVar('DataclassType', bound=Type[_DataclassProtocol])
 # function definition & the following invocation lets us work around that.
 def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserParams, ArgumentParser]):
     def argument_parser_from_dataclass_meta(
-        include_env: bool = True,
+        include_env: bool = False,
         env_prefix: Optional[str] = None,
         envize_str_fn: Callable[[str], str] = default_envize_string,
         validate_field_types: bool = False,
@@ -35,13 +35,16 @@ def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserP
         Wraps a `dataclass` definition to add convenience methods for populating from command line arguments.
         """
 
-        def wrapper_generator(cls: DataclassType) -> DataclassType:
+        def wrapper_generator(cls: T) -> T:
             @dataclass
             class wrapper(cls):  # type: ignore
                 argument_parser: ClassVar[ArgumentParser] = ArgumentParserCallable(*args, **kwargs)
 
+                if '__dataclass_fields__' not in cls.__dict__:
+                    raise ValueError(f'Class is not a dataclass: {cls}')
+
                 # populate argument_parser at class definition time
-                for field in fields(cls):
+                for field in fields(cast(DataclassProtocol, cls)):
                     for add_arg_fn in field.metadata[ARGS]:
                         add_arg_fn(argument_parser, dest=field.name)
 
@@ -95,7 +98,10 @@ def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserP
                     """
 
                     if argv is None:
-                        argv = (cls._extra_args_from_env() if include_env else []) + sys.argv[1:]
+                        argv = sys.argv[1:]
+
+                    if include_env:
+                        argv = cls._extra_args_from_env() + argv
 
                     parser = cls.argument_parser
                     args_ns: Namespace = parser.parse_args(argv)
