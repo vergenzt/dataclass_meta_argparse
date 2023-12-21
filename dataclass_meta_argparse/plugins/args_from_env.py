@@ -1,7 +1,9 @@
+from argparse import Action, ArgumentParser
 import re
-from dataclasses import dataclass
-from typing import Callable, Optional, Union
+from dataclasses import Field, dataclass
+from typing import Any, Callable, List, Optional, Union
 
+from ..decorator import Plugin
 
 def default_envize_string(s: str, keep_case: Union[bool, Callable[[str], bool]] = lambda s: len(s) == 1) -> str:
     subbed = re.sub(r'[^a-zA-Z0-9]+', '_', s).strip('_')
@@ -9,43 +11,53 @@ def default_envize_string(s: str, keep_case: Union[bool, Callable[[str], bool]] 
 
 
 @dataclass
-class EnvArgExtractor:
+class ArgsFromEnv(Plugin):
     include_env: bool = False
     env_prefix: Optional[str] = None
     envize_str_fn: Callable[[str], str] = default_envize_string
 
     @classmethod
-    def _extra_args_from_env(cls, env: Mapping[str, str] = os.environ) -> List[str]:
-        parser = cls.argument_parser
-        prefix: str = env_prefix or envize_str_fn(parser.prog)
+    def parse_args(cls, args_str: List[str]):
+        return super().parse_args(cls.args_from_env() + args_str)
 
-        envized_opts: Dict[str, str] = {
-            envize_str_fn(opt): opt for opt in parser._option_string_actions.keys()
-        }
+    @classmethod
+    def args_from_env
 
-        extra_args: List[str] = []
-        for envvar, envvar_val in env.items():
-            if not envvar.startswith(prefix + '_') or not envvar_val:
-                continue
+    # @classmethod
+    # def init_argument(cls, parser: ArgumentParser, field: Field[Any], add_arg_fn: Callable[[ArgumentParser], Action]
+                      
+                      
+    #                   env: Mapping[str, str] = os.environ) -> List[str]:
+    #     parser = cls.argument_parser
+    #     prefix: str = env_prefix or envize_str_fn(parser.prog)
 
-            envized_opt = envvar[len(prefix) + 1 :]
-            if envized_opt not in envized_opts:
-                raise ValueError(
-                    f'Envvar {envvar}: Unrecognized option {repr(envized_opt)}. Must be one of {set(envized_opts.keys())}.'
-                )
+    #     envized_opts: Dict[str, str] = {
+    #         envize_str_fn(opt): opt for opt in parser._option_string_actions.keys()
+    #     }
 
-            opt = envized_opts[envized_opt]
-            action = parser._option_string_actions[opt]
+    #     extra_args: List[str] = []
+    #     for envvar, envvar_val in env.items():
+    #         if not envvar.startswith(prefix + '_') or not envvar_val:
+    #             continue
 
-            extra_arg = [opt] + ([envvar_val] if action.nargs is None or action.nargs else [])
-            extra_args = extra_arg + extra_args  # prepend
+    #         envized_opt = envvar[len(prefix) + 1 :]
+    #         if envized_opt not in envized_opts:
+    #             raise ValueError(
+    #                 f'Envvar {envvar}: Unrecognized option {repr(envized_opt)}. Must be one of {set(envized_opts.keys())}.'
+    #             )
 
-            debug(f'Extra arg from env var {envvar}: {extra_arg}')
+    #         opt = envized_opts[envized_opt]
+    #         action = parser._option_string_actions[opt]
 
-        return extra_args
+    #         extra_arg = [opt] + ([envvar_val] if action.nargs is None or action.nargs else [])
+    #         extra_args = extra_arg + extra_args  # prepend
+
+    #         debug(f'Extra arg from env var {envvar}: {extra_arg}')
+
+    #     return extra_args
 
 
 
-    .... from_args:
-                if include_env:
-                    argv = cls._extra_args_from_env() + argv
+    # .... from_args:
+    #             if include_env:
+    #                 argv = cls._extra_args_from_env() + argv
