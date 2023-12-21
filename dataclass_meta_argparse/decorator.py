@@ -1,13 +1,10 @@
-import os
 import sys
-from argparse import ArgumentParser, Namespace
-from dataclasses import Field, dataclass, fields
+from argparse import Action, ArgumentParser, Namespace
+from dataclasses import Field, fields
 from functools import update_wrapper
-from logging import debug
-from typing import Any, Callable, ClassVar, Dict, List, Mapping, Optional, ParamSpec, Protocol, TypeVar, cast
+from typing import Any, Callable, ClassVar, Generic, List, Optional, ParamSpec, Protocol, Self, Tuple, Type, TypeVar
 
 from .metadata import ARGS
-from .utils_str import default_envize_string
 
 
 # based on typeshed: https://github.com/python/typeshed/pull/9362
@@ -15,105 +12,86 @@ class DataclassProtocol(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
 
-ArgumentParserParams = ParamSpec('ArgumentParserParams')
-T = TypeVar('T', bound=type)
+APParams = ParamSpec('APParams')
+DataclassT = TypeVar('DataclassT', bound=DataclassProtocol)
 
 
 # AFAIK Python does not have a way to directly assign a ParamSpec to the parameter spec
 # of a *specific* method, only a generic method passed into a function call. So this
 # function definition & the following invocation lets us work around that.
-def _param_spec_scope_container(ArgumentParserCallable: Callable[ArgumentParserParams, ArgumentParser]):
+def _with_param_spec_of(_: Callable[APParams, ArgumentParser]):
+
+
+    class DataclassMetaArgparseMixin(DataclassProtocol):
+        __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+        argument_parser: ClassVar[ArgumentParser]
+
+        @classmethod
+        def init_argument_parser(cls, *args: APParams.args, **kwargs: APParams.kwargs) -> ArgumentParser:
+            return ArgumentParser(*args, **kwargs)
+
+        @classmethod
+        def init_field(cls, parser: ArgumentParser, field: Field[Any]) -> List[Action]:
+            return [
+                cls.init_argument(parser, field, add_arg_fn)
+                for add_arg_fn in field.metadata[ARGS]
+            ]
+
+        @classmethod
+        def init_argument(cls, parser: ArgumentParser, field: Field[Any], add_arg_fn: Callable[[ArgumentParser], Action]) -> Action:
+            return add_arg_fn(parser, dest=field.name)  # type: ignore
+
+        @classmethod
+        def parse_args(cls, args_str: List[str]):
+            parser = cls.argument_parser
+            args_ns: Namespace = parser.parse_args(args_str)
+            args = cls(**args_ns.__dict__)
+            return args
+
+        @classmethod
+        def from_args(cls, argv: Optional[List[str]] = None):
+            """
+            Returns an instance of the wrapped dataclass from the parsed arguments.
+            """
+            return cls.parse_args(argv if argv is not None else sys.argv[1:])
+
+        def __init_subclass__(cls, *a: APParams.args, **kw: APParams.kwargs) -> None:
+            cls.argument_parser = cls.init_argument_parser(*a, **kw)
+            for field in fields(cls):
+                cls.init_field(cls.argument_parser, field)
+
+
     def argument_parser_from_dataclass_meta(
-        include_env: bool = False,
-        env_prefix: Optional[str] = None,
-        envize_str_fn: Callable[[str], str] = default_envize_string,
-        validate_field_types: bool = False,
-        *args: ArgumentParserParams.args,
-        **kwargs: ArgumentParserParams.kwargs,
+        plugins: Tuple[Type[Plugin], ...] = (),
+        *args: APParams.args,
+        **kwargs: APParams.kwargs,
     ):
         """
         Wraps a `dataclass` definition to add convenience methods for populating from command line arguments.
         """
 
-        def wrapper_generator(cls: T) -> T:
-            @dataclass
-            class wrapper(cls):  # type: ignore
-                argument_parser: ClassVar[ArgumentParser] = ArgumentParserCallable(*args, **kwargs)
+        def wrapper_generator(cls: Type[DataclassT]) -> Type[DataclassT]:
+            if '__dataclass_fields__' not in cls.__dict__:
+                raise ValueError(f'Class is not a dataclass: {cls}')
 
-                if '__dataclass_fields__' not in cls.__dict__:
-                    raise ValueError(f'Class is not a dataclass: {cls}')
-
-                # populate argument_parser at class definition time
-                for field in fields(cast(DataclassProtocol, cls)):
-                    for add_arg_fn in field.metadata[ARGS]:
-                        add_arg_fn(argument_parser, dest=field.name)
-
-                def __post_init__(self):
-                    if validate_field_types:
-                        self._validate_types()
-
-                def _validate_types(self):
-                    from trycast import isassignable
-
-                    for field in fields(self):
-                        field_val = getattr(self, field.name)
-                        assert isassignable(
-                            field_val, field.type
-                        ), f'{field.name} {field_val} should be a {field.type}!'
-
-                @classmethod
-                def _extra_args_from_env(cls, env: Mapping[str, str] = os.environ) -> List[str]:
-                    parser = cls.argument_parser
-                    prefix: str = env_prefix or envize_str_fn(parser.prog)
-
-                    envized_opts: Dict[str, str] = {
-                        envize_str_fn(opt): opt for opt in parser._option_string_actions.keys()
-                    }
-
-                    extra_args: List[str] = []
-                    for envvar, envvar_val in env.items():
-                        if not envvar.startswith(prefix + '_') or not envvar_val:
-                            continue
-
-                        envized_opt = envvar[len(prefix) + 1 :]
-                        if envized_opt not in envized_opts:
-                            raise ValueError(
-                                f'Envvar {envvar}: Unrecognized option {repr(envized_opt)}. Must be one of {set(envized_opts.keys())}.'
-                            )
-
-                        opt = envized_opts[envized_opt]
-                        action = parser._option_string_actions[opt]
-
-                        extra_arg = [opt] + ([envvar_val] if action.nargs is None or action.nargs else [])
-                        extra_args = extra_arg + extra_args  # prepend
-
-                        debug(f'Extra arg from env var {envvar}: {extra_arg}')
-
-                    return extra_args
-
-                @classmethod
-                def from_args(cls, argv: Optional[List[str]] = None) -> 'wrapper':
-                    """
-                    Returns an instance of the wrapped dataclass from the parsed arguments.
-                    """
-
-                    if argv is None:
-                        argv = sys.argv[1:]
-
-                    if include_env:
-                        argv = cls._extra_args_from_env() + argv
-
-                    parser = cls.argument_parser
-                    args_ns: Namespace = parser.parse_args(argv)
-                    args = cls(**args_ns.__dict__)
-                    return args
+            wrapper_bases: Tuple[type, ...] = (cls, DataclassMetaArgparseMixin, *plugins)
+            wrapper = type('DataclassMetaArgparseWrapper', wrapper_bases, {}, plugins=plugins)
 
             update_wrapper(wrapper, cls, updated=[])
             return wrapper  # type: ignore
 
         return wrapper_generator
 
-    return argument_parser_from_dataclass_meta
+    return (
+        DataclassMetaArgparseMixin,
+        argument_parser_from_dataclass_meta,
+    )
 
 
-argument_parser_from_dataclass_meta = _param_spec_scope_container(ArgumentParser)
+(
+    DataclassMetaArgparseMixin,
+    argument_parser_from_dataclass_meta,
+) = (
+    _with_param_spec_of(ArgumentParser)
+)
