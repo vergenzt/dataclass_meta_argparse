@@ -6,7 +6,7 @@ from .. import DataclassMetaArgumentParserPlugin
 
 
 @dataclass
-class ValidateTypes(DataclassMetaArgumentParserPlugin):
+class ArgTypeValidation(DataclassMetaArgumentParserPlugin):
 
     def __post_init__(self):
         self.validate_types()
