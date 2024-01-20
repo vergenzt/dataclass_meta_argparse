@@ -1,13 +1,19 @@
-from dataclasses import fields
+from dataclasses import dataclass, fields
 
 from trycast import isassignable
 
-from ..decorator import DataclassProtocol
+from .. import DataclassMetaArgumentParserPlugin
 
 
-def validate_types(dataclass_inst: DataclassProtocol):
-  for field in fields(dataclass_inst):
-      field_val = getattr(dataclass_inst, field.name)
-      assert isassignable(
-          field_val, field.type
-      ), f'{field.name} {field_val} should be a {field.type}!'
+@dataclass
+class ValidateTypes(DataclassMetaArgumentParserPlugin):
+
+    def __post_init__(self):
+        self.validate_types()
+
+    def validate_types(self):
+        for field in fields(self):
+            field_val = getattr(self, field.name)
+            assert isassignable(
+                field_val, field.type
+            ), f'{field.name} {field_val} should be a {field.type}!'
