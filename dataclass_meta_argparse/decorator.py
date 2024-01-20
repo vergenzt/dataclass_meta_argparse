@@ -2,10 +2,9 @@ import sys
 from argparse import Action, ArgumentParser, Namespace
 from dataclasses import Field, fields, is_dataclass
 from functools import cached_property, update_wrapper
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, List, Optional, ParamSpec, Protocol, Tuple, Type, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, ParamSpec, Tuple, Type, TypeVar
 
 from .metadata import ARGS
-
 
 Argument = Callable[[ArgumentParser], Action]
 
@@ -14,19 +13,32 @@ Params = ParamSpec('Params')
 T = TypeVar('T')
 
 
-def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]) -> ...:
+def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]):
     """
     AFAIK Python does not have a way to directly assign a ParamSpec to the parameter spec
     of a *specific* method, only a generic method passed into a function call. So this
     function definition & the following invocation lets us work around that.
     """
 
-    global DataclassMetaArgumentParser 
     class DataclassMetaArgumentParser(type):
-        def __new__(cls, name: str, bases: Tuple[type, ...], namespace: Dict[str,Any], *_args: Params.args, **_kwargs: Params.kwargs):
+        def __new__(
+            cls,
+            name: str,
+            bases: Tuple[type, ...],
+            namespace: Dict[str, Any],
+            *_args: Params.args,
+            **_kwargs: Params.kwargs,
+        ):
             return super().__new__(cls, name, bases, namespace)
 
-        def __init__(cls, name: str, bases: Tuple[type, ...], namespace: Dict[str,Any], *args: Params.args, **kwargs: Params.kwargs):
+        def __init__(
+            cls,
+            name: str,
+            bases: Tuple[type, ...],
+            namespace: Dict[str, Any],
+            *args: Params.args,
+            **kwargs: Params.kwargs,
+        ):
             cls._args = args
             cls._kwargs = kwargs
             super().__init__(name, bases, namespace)
@@ -34,12 +46,12 @@ def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]) 
         @cached_property
         def argument_parser(cls) -> ArgumentParser:
             if not (TYPE_CHECKING or is_dataclass(cls)):
-                raise ValueError(f'{__class__} should only be used with dataclasses!')
+                raise ValueError('dataclass_meta_argparse should only be used with dataclasses!')
             return cls.init_argument_parser(cls, *cls._args, *cls._kwargs)
 
         def init_argument_parser(cls, *args: Params.args, **kwargs: Params.kwargs) -> ArgumentParser:
             cls.argument_parser = cls.init_argument_parser(*args, **kwargs)
-            for field in fields(cls):
+            for field in fields(cls):  # type: ignore[arg-type]
                 cls.init_field(cls.argument_parser, field)
             return cls.argument_parser
 
@@ -64,15 +76,12 @@ def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]) 
             args = cls(**args_ns.__dict__)
             return args
 
-
-    global DataclassMetaArgumentParserPlugin
     class DataclassMetaArgumentParserPlugin(metaclass=DataclassMetaArgumentParser):
-        def __init__(self) -> None:
-            if type(self) == __class__:
-                raise ValueError(f'{__class__}s should not be instantiated!')
-            super().__init__()
+        def __new__(cls, *a, **kw) -> None:  # type: ignore
+            if cls is DataclassMetaArgumentParserPlugin:
+                raise ValueError(f'{cls.__name__}s should not be instantiated!')
+            object.__new__(cls, *a, **kw)
 
-    global dataclass_meta_argument_parser
     def dataclass_meta_argument_parser(
         plugins: Tuple[Type[DataclassMetaArgumentParserPlugin], ...] = (),
         *args: Params.args,
@@ -93,5 +102,15 @@ def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]) 
 
         return wrapper_generator
 
+    return (
+        DataclassMetaArgumentParser,
+        DataclassMetaArgumentParserPlugin,
+        dataclass_meta_argument_parser,
+    )
 
-_execute_with_param_spec(ArgumentParser)
+
+(
+    DataclassMetaArgumentParser,
+    DataclassMetaArgumentParserPlugin,
+    dataclass_meta_argument_parser,
+) = _execute_with_param_spec(ArgumentParser)

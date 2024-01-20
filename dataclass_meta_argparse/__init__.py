@@ -57,8 +57,8 @@ from .decorator import dataclass_meta_argument_parser, DataclassMetaArgumentPars
 from .metadata import ARGS, argparse_argument
 
 __all__ = [
-  'dataclass_meta_argument_parser',
-  'DataclassMetaArgumentParserPlugin',
-  'ARGS',
-  'argparse_argument',
+    'dataclass_meta_argument_parser',
+    'DataclassMetaArgumentParserPlugin',
+    'ARGS',
+    'argparse_argument',
 ]

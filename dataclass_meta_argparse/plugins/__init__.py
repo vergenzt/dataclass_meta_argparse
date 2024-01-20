@@ -3,6 +3,6 @@ from type_validation import ArgTypeValidation
 
 
 __all__ = [
-  'ArgsFromEnv',
-  'ArgTypeValidation',
+    'ArgsFromEnv',
+    'ArgTypeValidation',
 ]

@@ -26,9 +26,7 @@ class ArgsFromEnv(DataclassMetaArgumentParserPlugin):
         parser = cls.argument_parser
         prefix: str = cls.env_prefix or cls.envize_str_fn(parser.prog)
 
-        envized_opts: Dict[str, str] = {
-            cls.envize_str_fn(opt): opt for opt in parser._option_string_actions.keys()
-        }
+        envized_opts: Dict[str, str] = {cls.envize_str_fn(opt): opt for opt in parser._option_string_actions.keys()}
 
         extra_args: List[str] = []
         for envvar, envvar_val in os.environ.items():
