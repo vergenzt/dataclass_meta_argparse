@@ -10,7 +10,7 @@ DelayedInstanceMethod = Callable[Params, Callable[Concatenate[Self, Params], Ret
 
 
 def partial_instance_method(
-    source_fn: InstanceMethod[Self, Params, Return]
+    source_fn: InstanceMethod[Self, Params, Return],
 ) -> DelayedInstanceMethod[Params, Self, Return]:
     def outer(*outer_args: Params.args, **outer_kwargs: Params.kwargs) -> Callable[Concatenate[Self, Params], Return]:
         def inner(self: Self, *_args: Params.args, **kwargs: Params.kwargs) -> Return:

@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from .utils_callable import partial_instance_method
+from .utils.partial_instance_method import partial_instance_method
 
 
 argparse_argument = partial_instance_method(ArgumentParser.add_argument)

@@ -20,7 +20,7 @@ To use:
 
 Example:
 
->>> @argument_parser_from_dataclass_meta(prog='my-cli')
+>>> @dataclass_meta_argument_parser(prog='my-cli')
 ... @dataclass
 ... class MyCliArgs:
 ...   'My CLI app that does a thing'
@@ -53,8 +53,15 @@ options:
   --myarg INT, -m INT  my integer argument
 """
 
-# pyright: reportUnusedImport=false
-# ruff: noqa: F401
-
-from .decorator import argument_parser_from_dataclass_meta
+from .decorator import dataclass_meta_argument_parser, DataclassMetaArgumentParserPlugin
 from .metadata import ARGS, argparse_argument
+from . import plugins
+
+
+__all__ = [
+    'dataclass_meta_argument_parser',
+    'ARGS',
+    'argparse_argument',
+    'DataclassMetaArgumentParserPlugin',
+    'plugins',
+]
