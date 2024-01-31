@@ -86,7 +86,7 @@ def _execute_with_param_spec(_ArgumentParser: Callable[Params, ArgumentParser]):
         plugins: Tuple[Type[DataclassMetaArgumentParserPlugin], ...] = (),
         *args: Params.args,
         **kwargs: Params.kwargs,
-    ):
+    ) -> DataclassMetaArgumentParser:
         """
         Wraps a `dataclass` definition to add convenience methods for populating from command line arguments.
         """
