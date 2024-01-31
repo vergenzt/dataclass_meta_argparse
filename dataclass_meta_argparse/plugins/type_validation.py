@@ -1,7 +1,5 @@
 from dataclasses import dataclass, fields
 
-from trycast import isassignable
-
 from .. import DataclassMetaArgumentParserPlugin
 
 
@@ -11,6 +9,11 @@ class ArgTypeValidation(DataclassMetaArgumentParserPlugin):
         self.validate_types()
 
     def validate_types(self):
+        try:
+            from trycast import isassignable
+        except ImportError:
+            raise NotImplementedError(f'Plugin {__class__} requires extra [type_validation]! (Not installed)')
+
         for field in fields(self):
             field_val = getattr(self, field.name)
             assert isassignable(field_val, field.type), f'{field.name} {field_val} should be a {field.type}!'

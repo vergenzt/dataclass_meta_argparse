@@ -55,10 +55,13 @@ options:
 
 from .decorator import dataclass_meta_argument_parser, DataclassMetaArgumentParserPlugin
 from .metadata import ARGS, argparse_argument
+from . import plugins
+
 
 __all__ = [
     'dataclass_meta_argument_parser',
-    'DataclassMetaArgumentParserPlugin',
     'ARGS',
     'argparse_argument',
+    'DataclassMetaArgumentParserPlugin',
+    'plugins',
 ]
